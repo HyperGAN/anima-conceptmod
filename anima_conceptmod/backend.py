@@ -274,12 +274,12 @@ class AnimaBackend(Backend):
 
     # ---------------- training ----------------
 
-    def trainable_parameters(self, train_method: str):
+    def trainable_parameters(self, train_method: str | None):
+        if train_method not in (None, "lora"):
+            raise ValueError(f"anima supports train_method=None or 'lora', got {train_method!r}")
         self.transformer.train()
         params = [p for p in self.transformer.parameters() if p.requires_grad]
         assert params
-        if train_method not in (None, "lora"):
-            print(f"anima backend is LoRA-only; ignoring train_method={train_method!r}")
         return params
 
     def edit_components(self):
@@ -287,3 +287,15 @@ class AnimaBackend(Backend):
         if self.encoder_lora:
             components["text_encoder"] = self.pipe.text_encoder
         return components
+
+    def training_modules(self):
+        from anima_conceptmod.state import declared_modules
+
+        return declared_modules(self, super().training_modules())
+
+    def artifact_metadata(self):
+        from anima_conceptmod.state import runtime_metadata
+
+        metadata = super().artifact_metadata()
+        metadata["runtime"] = runtime_metadata(self)
+        return metadata
